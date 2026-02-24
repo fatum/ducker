@@ -13,7 +13,7 @@ import (
 
 func DetectSearchMode(filters map[string]any, search string) string {
 	if search != "" {
-		return "fts"
+		return "basic"
 	}
 	for _, value := range filters {
 		if s, ok := value.(string); ok {
@@ -37,8 +37,8 @@ func Execute(conn *sql.DB, tenantID string, segments []string, filters map[strin
 		rows []map[string]any
 		err  error
 	)
-	if searchMode == "fts" {
-		rows, err = executeFTSQuery(conn, table, segments, filters, search, limit, offset, startTS, endTS)
+	if searchMode == "basic" {
+		rows, err = executeBasicSearchQuery(conn, table, segments, filters, search, limit, offset, startTS, endTS)
 	} else {
 		rows, err = executeDirectQuery(conn, table, segments, filters, limit, offset, startTS, endTS)
 	}
@@ -69,7 +69,7 @@ func executeDirectQuery(conn *sql.DB, table string, segments []string, filters m
 	return runRowMapQuery(conn, sqlText)
 }
 
-func executeFTSQuery(conn *sql.DB, table string, segments []string, filters map[string]any, search string, limit, offset int, startTS, endTS int64) ([]map[string]any, error) {
+func executeBasicSearchQuery(conn *sql.DB, table string, segments []string, filters map[string]any, search string, limit, offset int, startTS, endTS int64) ([]map[string]any, error) {
 	clauses := buildWhereClauses(filters)
 	clauses = append(clauses, fmt.Sprintf(`"_segment" IN (%s)`, segmentListSQL(segments)))
 	if startTS > 0 {
@@ -78,10 +78,10 @@ func executeFTSQuery(conn *sql.DB, table string, segments []string, filters map[
 	if endTS > 0 {
 		clauses = append(clauses, fmt.Sprintf(`"timestamp" <= %d`, endTS))
 	}
-	where := "WHERE " + strings.Join(clauses, " AND ")
 	searchEscaped := escapeSQL(search)
-	ftsSchema := fmt.Sprintf("fts_main_%s", table)
-	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_row_id, _segment), %s.match_bm25(_row_id, '%s') AS score FROM %s %s AND %s.match_bm25(_row_id, '%s') IS NOT NULL ORDER BY score DESC LIMIT %d OFFSET %d`, ftsSchema, searchEscaped, table, where, ftsSchema, searchEscaped, limit, offset)
+	clauses = append(clauses, fmt.Sprintf(`"message" ILIKE '%%%s%%'`, searchEscaped))
+	where := "WHERE " + strings.Join(clauses, " AND ")
+	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_row_id, _segment) FROM %s %s ORDER BY "timestamp" DESC LIMIT %d OFFSET %d`, table, where, limit, offset)
 	return runRowMapQuery(conn, sqlText)
 }
 

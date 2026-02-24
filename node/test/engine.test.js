@@ -69,7 +69,6 @@ async function createFixtures() {
   // Create the persistent test DB and ingest fixtures into a tenant table
   instance = await DuckDBInstance.create(DB_PATH);
   conn = await instance.connect();
-  await conn.run('INSTALL fts; LOAD fts;');
 
   // Create tenant table from file1
   await conn.run(
@@ -79,11 +78,6 @@ async function createFixtures() {
   // Append file2
   await conn.run(
     `INSERT INTO ${TABLE_NAME} SELECT *, (SELECT max(_row_id) FROM ${TABLE_NAME}) + row_number() OVER () AS _row_id, '${SEG2}' AS _segment FROM read_parquet('${file2}')`
-  );
-
-  // Create FTS index for testing
-  await conn.run(
-    `PRAGMA create_fts_index('${TABLE_NAME}', '_row_id', 'message', stemmer='porter', stopwords='english')`
   );
 }
 
@@ -100,9 +94,9 @@ describe('detectSearchMode', () => {
     assert.equal(detectSearchMode({ host: 'host-0??' }, null), 'wildcard');
   });
 
-  it('should detect fts mode', () => {
-    assert.equal(detectSearchMode({}, 'connection timeout'), 'fts');
-    assert.equal(detectSearchMode({ service: 'auth' }, 'timeout'), 'fts');
+  it('should detect basic search mode', () => {
+    assert.equal(detectSearchMode({}, 'connection timeout'), 'basic');
+    assert.equal(detectSearchMode({ service: 'auth' }, 'timeout'), 'basic');
   });
 });
 
@@ -203,46 +197,45 @@ describe('execute', () => {
     });
   });
 
-  describe('full-text search', () => {
-    it('should return BM25 scored results', async () => {
+  describe('basic search', () => {
+    it('should return results matching search term', async () => {
       const result = await execute(conn, TENANT, [SEG1], {
         filters: {},
-        search: 'connection refused database',
+        search: 'connection',
         limit: 20,
       });
 
-      assert.equal(result.searchMode, 'fts');
+      assert.equal(result.searchMode, 'basic');
       assert.ok(result.rows.length > 0);
       for (const row of result.rows) {
-        assert.ok(row.score !== undefined, 'Missing score field');
-        assert.ok(Number(row.score) > 0, 'Score should be positive');
+        assert.ok(row.message.toLowerCase().includes('connection'), 'Message should contain search term');
       }
     });
 
-    it('should order results by relevance (score desc)', async () => {
+    it('should order results by timestamp desc', async () => {
       const result = await execute(conn, TENANT, [SEG1], {
         filters: {},
-        search: 'timeout',
+        search: 'status',
         limit: 20,
       });
 
-      const scores = result.rows.map((r) => Number(r.score));
-      for (let i = 1; i < scores.length; i++) {
-        assert.ok(scores[i] <= scores[i - 1], `Scores not descending: ${scores[i]} > ${scores[i - 1]}`);
+      const timestamps = result.rows.map((r) => Number(r.timestamp));
+      for (let i = 1; i < timestamps.length; i++) {
+        assert.ok(timestamps[i] <= timestamps[i - 1], `Timestamps not descending: ${timestamps[i]} > ${timestamps[i - 1]}`);
       }
     });
 
-    it('should combine FTS with structured filters', async () => {
+    it('should combine basic search with structured filters', async () => {
       const result = await execute(conn, TENANT, [SEG1], {
         filters: { service: 'auth' },
-        search: 'connection refused',
+        search: 'connection',
         limit: 20,
       });
 
-      assert.equal(result.searchMode, 'fts');
+      assert.equal(result.searchMode, 'basic');
       for (const row of result.rows) {
         assert.equal(row.service, 'auth');
-        assert.ok(Number(row.score) > 0);
+        assert.ok(row.message.toLowerCase().includes('connection'));
       }
     });
   });

@@ -159,28 +159,28 @@ describe('Integration', () => {
     }
   });
 
-  it('should execute full-text search', async () => {
-    const result = await runQuery({ search: 'connection timeout database' });
+  it('should execute basic search', async () => {
+    const result = await runQuery({ search: 'connection' });
 
-    assert.equal(result.searchMode, 'fts');
+    assert.equal(result.searchMode, 'basic');
     assert.ok(result.rows.length > 0);
     for (const row of result.rows) {
-      assert.ok(Number(row.score) > 0);
+      assert.ok(row.message.toLowerCase().includes('connection'));
     }
   });
 
-  it('should combine FTS with bloom-pruned structured filters', async () => {
+  it('should combine basic search with bloom-pruned structured filters', async () => {
     const result = await runQuery({
       filters: { service: 'auth' },
       search: 'timeout',
     });
 
-    assert.equal(result.searchMode, 'fts');
+    assert.equal(result.searchMode, 'basic');
     // Bloom should prune web/billing hours
     assert.equal(result.planStats.filesAfterBloom, 2);
     for (const row of result.rows) {
       assert.equal(row.service, 'auth');
-      assert.ok(Number(row.score) > 0);
+      assert.ok(row.message.toLowerCase().includes('timeout'));
     }
   });
 

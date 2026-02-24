@@ -50,8 +50,6 @@ func (c *Cache) Init() error {
 	c.db = db
 
 	stmts := []string{
-		`INSTALL fts;`,
-		`LOAD fts;`,
 		`CREATE TABLE IF NOT EXISTS _cache_segments (
 			tenant VARCHAR,
 			segment VARCHAR,
@@ -175,15 +173,6 @@ func (c *Cache) EnsureCached(tenant string, files []model.SegmentFile) error {
 				return err
 			}
 		}
-		needs, err := c.NeedsFTSRebuild(tenant)
-		if err != nil {
-			return err
-		}
-		if needs {
-			if err := c.EnsureFTSIndex(tenant); err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }
@@ -251,28 +240,6 @@ func (c *Cache) cacheBloom(tenant, segment string) error {
 
 func (c *Cache) GetBloomData(tenantID, segment string) (bloom.FileBloom, bool, error) {
 	return bloom.LoadFromDB(c.db, tenantID, segment)
-}
-
-func (c *Cache) NeedsFTSRebuild(tenant string) (bool, error) {
-	var ts sql.NullInt64
-	err := c.db.QueryRow(`SELECT fts_indexed_at FROM _cache_segments WHERE tenant = ? AND fts_indexed_at IS NULL LIMIT 1`, tenant).Scan(&ts)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (c *Cache) EnsureFTSIndex(tenant string) error {
-	table := tenantpkg.TableName(tenant)
-	_, _ = c.db.Exec(fmt.Sprintf(`PRAGMA drop_fts_index('%s')`, table))
-	if _, err := c.db.Exec(fmt.Sprintf(`PRAGMA create_fts_index('%s', '_row_id', 'message', stemmer='porter', stopwords='english', overwrite=1)`, table)); err != nil {
-		return err
-	}
-	_, err := c.db.Exec(`UPDATE _cache_segments SET fts_indexed_at = ? WHERE tenant = ?`, time.Now().UnixMilli(), tenant)
-	return err
 }
 
 func (c *Cache) Evict(maxRows int64) (int, error) {

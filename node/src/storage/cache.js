@@ -25,7 +25,6 @@ export class DuckDbCache {
   async init() {
     this.instance = await DuckDBInstance.create(this.dbPath);
     this.connection = await this.instance.connect();
-    await this.connection.run('INSTALL fts; LOAD fts;');
 
     await this.connection.run(`
       CREATE TABLE IF NOT EXISTS _cache_segments (
@@ -109,10 +108,6 @@ export class DuckDbCache {
       await this.connection.run(
         `UPDATE _cache_segments SET last_accessed = ${Date.now()} WHERE tenant = '${escapeSql(tenant)}' AND segment IN (${segList})`
       );
-
-      if (await this.needsFtsRebuild(tenant)) {
-        await this.ensureFtsIndex(tenant);
-      }
     }
   }
 
@@ -190,32 +185,6 @@ export class DuckDbCache {
   resetCounters() {
     this.hits = 0;
     this.misses = 0;
-  }
-
-  async ensureFtsIndex(tenant) {
-    const tableName = tenantTableName(tenant);
-    const now = Date.now();
-
-    try {
-      await this.connection.run(`PRAGMA drop_fts_index('${tableName}')`);
-    } catch {
-      // No existing FTS index to drop
-    }
-
-    await this.connection.run(
-      `PRAGMA create_fts_index('${tableName}', '_row_id', 'message', stemmer='porter', stopwords='english', overwrite=1)`
-    );
-
-    await this.connection.run(
-      `UPDATE _cache_segments SET fts_indexed_at = ${now} WHERE tenant = '${escapeSql(tenant)}'`
-    );
-  }
-
-  async needsFtsRebuild(tenant) {
-    const result = await this.connection.runAndReadAll(
-      `SELECT fts_indexed_at FROM _cache_segments WHERE tenant = '${escapeSql(tenant)}' AND fts_indexed_at IS NULL LIMIT 1`
-    );
-    return result.getRowObjectsJson().length > 0;
   }
 
   stats() {
