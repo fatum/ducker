@@ -29,6 +29,8 @@ function buildWhereClauses(filters) {
       } else {
         clauses.push(`${col} = '${escapeSql(value)}'`);
       }
+    } else if (typeof value === 'number') {
+      clauses.push(`${col} = ${value}`);
     } else if (Array.isArray(value)) {
       const vals = value.map((v) => `'${escapeSql(String(v))}'`).join(', ');
       clauses.push(`${col} IN (${vals})`);
