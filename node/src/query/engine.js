@@ -1,6 +1,6 @@
 /**
  * Detect the search mode from a query.
- * Returns "fts" | "wildcard" | "structured"
+ * Returns "basic" | "wildcard" | "structured"
  */
 export function detectSearchMode(filters, search) {
   if (search) return 'basic';

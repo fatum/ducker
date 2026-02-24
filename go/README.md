@@ -28,7 +28,7 @@ PORT=8080 COLD_STORAGE_DIR=/path/to/logs make run-server
 # Filter by service and level
 make run-cli -- --tenant tenant-1 --service auth --level error --last 24h
 
-# Full-text search
+# Text search
 make run-cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 
 # Wildcard matching

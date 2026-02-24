@@ -41,7 +41,7 @@ PORT=8080 COLD_STORAGE_DIR=/path/to/logs npm start
 # Filter by service and level
 npm run cli -- --tenant tenant-1 --service auth --level error --last 24h
 
-# Full-text search
+# Text search
 npm run cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 
 # Wildcard matching
