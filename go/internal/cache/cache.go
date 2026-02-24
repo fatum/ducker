@@ -50,15 +50,11 @@ func (c *Cache) Init() error {
 	c.db = db
 
 	stmts := []string{
-		`INSTALL fts;`,
-		`LOAD fts;`,
 		`CREATE TABLE IF NOT EXISTS _cache_segments (
 			tenant VARCHAR,
 			segment VARCHAR,
 			cached_at BIGINT,
 			last_accessed BIGINT,
-			fts_indexed_at BIGINT,
-			next_row_id BIGINT,
 			row_count INTEGER,
 			PRIMARY KEY (tenant, segment)
 		)`,
@@ -126,16 +122,10 @@ func (c *Cache) EnsureCached(tenant string, files []model.SegmentFile) error {
 			return err
 		}
 
-		nextRowID, err := c.getNextRowID(table)
-		if err != nil {
-			lock.Unlock()
-			return err
-		}
-
 		coldPath := filepath.Join(c.coldStorageRoot, file.Path)
 		insertSQL := fmt.Sprintf(
-			`INSERT INTO %s SELECT *, %d + row_number() OVER () AS _row_id, '%s' AS _segment FROM read_parquet('%s')`,
-			table, nextRowID, escapeSQL(file.Segment), escapeSQL(coldPath),
+			`INSERT INTO %s SELECT *, '%s' AS _segment FROM read_parquet('%s')`,
+			table, escapeSQL(file.Segment), escapeSQL(coldPath),
 		)
 		if _, err := c.db.Exec(insertSQL); err != nil {
 			lock.Unlock()
@@ -151,8 +141,8 @@ func (c *Cache) EnsureCached(tenant string, files []model.SegmentFile) error {
 
 		now := time.Now().UnixMilli()
 		_, err = c.db.Exec(
-			`INSERT OR REPLACE INTO _cache_segments VALUES (?, ?, ?, ?, NULL, ?, ?)`,
-			tenant, file.Segment, now, now, nextRowID+rowCount, rowCount,
+			`INSERT OR REPLACE INTO _cache_segments VALUES (?, ?, ?, ?, ?)`,
+			tenant, file.Segment, now, now, rowCount,
 		)
 		if err != nil {
 			lock.Unlock()
@@ -175,15 +165,6 @@ func (c *Cache) EnsureCached(tenant string, files []model.SegmentFile) error {
 				return err
 			}
 		}
-		needs, err := c.NeedsFTSRebuild(tenant)
-		if err != nil {
-			return err
-		}
-		if needs {
-			if err := c.EnsureFTSIndex(tenant); err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }
@@ -200,15 +181,6 @@ func (c *Cache) isSegmentCached(tenant, segment string) (bool, error) {
 	return true, nil
 }
 
-func (c *Cache) getNextRowID(table string) (int64, error) {
-	query := fmt.Sprintf(`SELECT COALESCE(MAX(_row_id), 0) FROM %s`, table)
-	var id int64
-	if err := c.db.QueryRow(query).Scan(&id); err != nil {
-		return 0, nil
-	}
-	return id, nil
-}
-
 func (c *Cache) createTenantTableIfNeeded(table, samplePath string) error {
 	c.knownTablesMu.Lock()
 	known := c.knownTables[table]
@@ -219,7 +191,7 @@ func (c *Cache) createTenantTableIfNeeded(table, samplePath string) error {
 
 	coldPath := filepath.Join(c.coldStorageRoot, samplePath)
 	stmt := fmt.Sprintf(
-		`CREATE TABLE IF NOT EXISTS %s AS SELECT *, 0::BIGINT AS _row_id, ''::VARCHAR AS _segment FROM read_parquet('%s') WHERE false`,
+		`CREATE TABLE IF NOT EXISTS %s AS SELECT *, ''::VARCHAR AS _segment FROM read_parquet('%s') WHERE false`,
 		table, escapeSQL(coldPath),
 	)
 	if _, err := c.db.Exec(stmt); err != nil {
@@ -251,28 +223,6 @@ func (c *Cache) cacheBloom(tenant, segment string) error {
 
 func (c *Cache) GetBloomData(tenantID, segment string) (bloom.FileBloom, bool, error) {
 	return bloom.LoadFromDB(c.db, tenantID, segment)
-}
-
-func (c *Cache) NeedsFTSRebuild(tenant string) (bool, error) {
-	var ts sql.NullInt64
-	err := c.db.QueryRow(`SELECT fts_indexed_at FROM _cache_segments WHERE tenant = ? AND fts_indexed_at IS NULL LIMIT 1`, tenant).Scan(&ts)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (c *Cache) EnsureFTSIndex(tenant string) error {
-	table := tenantpkg.TableName(tenant)
-	_, _ = c.db.Exec(fmt.Sprintf(`PRAGMA drop_fts_index('%s')`, table))
-	if _, err := c.db.Exec(fmt.Sprintf(`PRAGMA create_fts_index('%s', '_row_id', 'message', stemmer='porter', stopwords='english', overwrite=1)`, table)); err != nil {
-		return err
-	}
-	_, err := c.db.Exec(`UPDATE _cache_segments SET fts_indexed_at = ? WHERE tenant = ?`, time.Now().UnixMilli(), tenant)
-	return err
 }
 
 func (c *Cache) Evict(maxRows int64) (int, error) {

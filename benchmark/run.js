@@ -232,19 +232,19 @@ function getBenchmarkQueries(tenant, fromDate, toDate) {
       body: { tenant, from: fromDate, to: toDate, filters: { host: 'host-00*' }, limit: 100 },
     },
 
-    // Full-text search
+    // Basic search
     {
-      name: 'FTS: search="processed"',
+      name: 'Search: search="processed"',
       body: { tenant, from: fromDate, to: toDate, search: 'processed', limit: 100 },
     },
     {
-      name: 'FTS: search="duration"',
+      name: 'Search: search="duration"',
       body: { tenant, from: fromDate, to: toDate, search: 'duration', limit: 100 },
     },
 
-    // FTS + filters
+    // Search + filters
     {
-      name: 'FTS+Filter: search + service=api',
+      name: 'Search+Filter: search + service=api',
       body: { tenant, from: fromDate, to: toDate, search: 'processed', filters: { service: 'api' }, limit: 100 },
     },
 

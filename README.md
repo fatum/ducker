@@ -2,7 +2,7 @@
 
 A DuckDB-powered stateless log search engine proof-of-concept.
 
-Ducker demonstrates how to build a scalable log search system using DuckDB as an embedded query engine with cold storage in Parquet format. It features bloom filter pruning, full-text search with BM25 ranking, and an LRU caching layer for efficient query execution.
+Ducker demonstrates how to build a scalable log search system using DuckDB as an embedded query engine with cold storage in Parquet format. It features bloom filter pruning, basic text search, and an LRU caching layer for efficient query execution.
 
 ## Architecture
 
@@ -17,8 +17,8 @@ Ducker demonstrates how to build a scalable log search system using DuckDB as an
 │                          │                   │                  │            │
 │                          ▼                   ▼                  ▼            │
 │                   ┌──────────────┐    ┌─────────────┐    ┌──────────────┐   │
-│                   │ Bloom Filters│    │Cold Storage │    │  FTS Index   │   │
-│                   │  (pruning)   │    │  (Parquet)  │    │   (BM25)     │   │
+│                   │ Bloom Filters│    │Cold Storage │    │    Search    │   │
+│                   │  (pruning)   │    │  (Parquet)  │    │   (ILIKE)    │   │
 │                   └──────────────┘    └─────────────┘    └──────────────┘   │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -29,7 +29,7 @@ Ducker demonstrates how to build a scalable log search system using DuckDB as an
 - **Multi-tenant** - Isolated data storage per tenant
 - **Time-range filtering** - Efficiently skips segments outside query window
 - **Bloom filter pruning** - Eliminates files that definitely don't contain matches
-- **Full-text search** - BM25-ranked search using DuckDB's FTS extension
+- **Basic text search** - Case-insensitive substring search on message column
 - **Wildcard patterns** - `*` and `?` glob-style matching on any column
 - **Range filters** - Support for `gt`, `gte`, `lt`, `lte` operators
 - **IN filters** - Match any value from a list
@@ -101,7 +101,7 @@ curl -X POST http://localhost:3000/query \
 
 ### POST /query
 
-Query logs with filtering and full-text search.
+Query logs with filtering and text search.
 
 **Request Body:**
 
@@ -111,7 +111,7 @@ Query logs with filtering and full-text search.
 | `from` | string | Yes | Start timestamp (ISO 8601) |
 | `to` | string | Yes | End timestamp (ISO 8601) |
 | `filters` | object | No | Column filters (see below) |
-| `search` | string | No | Full-text search query |
+| `search` | string | No | Text search in message column |
 | `limit` | number | No | Max results (default: 100) |
 | `offset` | number | No | Pagination offset (default: 0) |
 
@@ -146,7 +146,7 @@ Get cache statistics and configuration.
 | `level` | VARCHAR | Log level (debug, info, warn, error, fatal) |
 | `host` | VARCHAR | Host identifier (host-001 to host-020) |
 | `trace_id` | VARCHAR | Distributed trace ID |
-| `message` | VARCHAR | Log message (FTS indexed) |
+| `message` | VARCHAR | Log message (searchable) |
 | `status_code` | INTEGER | HTTP status code |
 | `duration_ms` | DOUBLE | Request duration |
 | `request_path` | VARCHAR | API endpoint path |

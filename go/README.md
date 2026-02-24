@@ -28,22 +28,11 @@ PORT=8080 COLD_STORAGE_DIR=/path/to/logs make run-server
 # Filter by service and level
 make run-cli -- --tenant tenant-1 --service auth --level error --last 24h
 
-# Full-text search
+# Text search
 make run-cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 
 # Wildcard matching
 make run-cli -- --tenant tenant-1 --request_path "/api/users/*" --last 24h
-```
-
-### Run Benchmarks
-
-```bash
-make run-benchmark
-# Options:
-#   --rows N       Total rows (default: 1,000,000,000)
-#   --segments N   Number of segments (default: 1000)
-#   --memory N     DuckDB memory limit (default: 2GB)
-#   --force        Force data regeneration
 ```
 
 ## Testing
@@ -64,7 +53,6 @@ make build
 ```
 go/
 ├── cmd/
-│   ├── ducker-benchmark/   # Benchmark tool
 │   ├── ducker-cli/         # CLI tool
 │   └── ducker-server/      # HTTP server
 ├── internal/

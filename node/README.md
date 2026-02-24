@@ -41,22 +41,11 @@ PORT=8080 COLD_STORAGE_DIR=/path/to/logs npm start
 # Filter by service and level
 npm run cli -- --tenant tenant-1 --service auth --level error --last 24h
 
-# Full-text search
+# Text search
 npm run cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 
 # Wildcard matching
 npm run cli -- --tenant tenant-1 --request_path "/api/users/*" --last 24h
-```
-
-### Run Benchmarks
-
-```bash
-node scripts/benchmark.js
-# Options:
-#   --rows N       Total rows (default: 1,000,000,000)
-#   --segments N   Number of segments (default: 1000)
-#   --memory N     DuckDB memory limit (default: 2GB)
-#   --force        Force data regeneration
 ```
 
 ## Testing

@@ -65,7 +65,7 @@ async function main() {
 
   console.log(`\nQuery: tenant=${tenant} range=${new Date(startTs).toISOString()} → ${new Date(endTs).toISOString()}`);
   if (Object.keys(filters).length > 0) console.log(`Filters: ${JSON.stringify(filters)}`);
-  if (search) console.log(`FTS Search: "${search}"`);
+  if (search) console.log(`Search: "${search}"`);
   console.log();
 
   const coldStorage = new ColdStorage(COLD_STORAGE_DIR);

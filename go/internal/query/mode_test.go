@@ -9,7 +9,7 @@ func TestDetectSearchMode(t *testing.T) {
 	if got := DetectSearchMode(map[string]any{"request_path": "/api/*"}, ""); got != "wildcard" {
 		t.Fatalf("expected wildcard, got %s", got)
 	}
-	if got := DetectSearchMode(map[string]any{"service": "auth"}, "timeout"); got != "fts" {
-		t.Fatalf("expected fts, got %s", got)
+	if got := DetectSearchMode(map[string]any{"service": "auth"}, "timeout"); got != "basic" {
+		t.Fatalf("expected basic, got %s", got)
 	}
 }

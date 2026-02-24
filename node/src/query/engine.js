@@ -1,9 +1,9 @@
 /**
  * Detect the search mode from a query.
- * Returns "fts" | "wildcard" | "structured"
+ * Returns "basic" | "wildcard" | "structured"
  */
 export function detectSearchMode(filters, search) {
-  if (search) return 'fts';
+  if (search) return 'basic';
   for (const value of Object.values(filters || {})) {
     if (typeof value === 'string' && (value.includes('*') || value.includes('?'))) {
       return 'wildcard';
@@ -72,25 +72,25 @@ async function executeDirectQuery(conn, tableName, segments, filters, { limit = 
 
   const where = `WHERE ${clauses.join(' AND ')}`;
 
-  const sql = `SELECT * EXCLUDE (_row_id, _segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+  const sql = `SELECT * EXCLUDE (_segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   const reader = await conn.runAndReadAll(sql);
   return reader.getRowObjectsJson();
 }
 
 /**
- * Execute a full-text search query.
- * Queries the persistent FTS index on the tenant table directly.
+ * Execute a basic search query using ILIKE on the message column.
  */
-async function executeFtsQuery(conn, tableName, segments, filters, search, { limit = 100, offset = 0, startTs, endTs }) {
+async function executeBasicSearchQuery(conn, tableName, segments, filters, search, { limit = 100, offset = 0, startTs, endTs }) {
   const clauses = buildWhereClauses(filters);
   clauses.push(`"_segment" IN (${segmentListSql(segments)})`);
   if (startTs) clauses.push(`"timestamp" >= ${startTs}`);
   if (endTs) clauses.push(`"timestamp" <= ${endTs}`);
+  const searchEscaped = escapeSql(search);
+  clauses.push(`"message" ILIKE '%${searchEscaped}%'`);
   const where = `WHERE ${clauses.join(' AND ')}`;
 
-  const searchEscaped = escapeSql(search);
-  const sql = `SELECT * EXCLUDE (_row_id, _segment), fts_main_${tableName}.match_bm25(_row_id, '${searchEscaped}') AS score FROM ${tableName} ${where} AND fts_main_${tableName}.match_bm25(_row_id, '${searchEscaped}') IS NOT NULL ORDER BY score DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+  const sql = `SELECT * EXCLUDE (_segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   const reader = await conn.runAndReadAll(sql);
   return reader.getRowObjectsJson();
@@ -109,8 +109,8 @@ export async function execute(conn, tenant, segments, { filters, search, limit, 
   const searchMode = detectSearchMode(filters, search);
 
   let rows;
-  if (searchMode === 'fts') {
-    rows = await executeFtsQuery(conn, tableName, segments, filters, search, { limit, offset, startTs, endTs });
+  if (searchMode === 'basic') {
+    rows = await executeBasicSearchQuery(conn, tableName, segments, filters, search, { limit, offset, startTs, endTs });
   } else {
     rows = await executeDirectQuery(conn, tableName, segments, filters, { limit, offset, startTs, endTs });
   }

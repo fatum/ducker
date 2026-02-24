@@ -30,7 +30,7 @@ func main() {
 	statusCode := flag.String("status_code", "", "status_code filter")
 	requestPath := flag.String("request_path", "", "request_path filter")
 	traceID := flag.String("trace_id", "", "trace_id filter")
-	search := flag.String("search", "", "fts search")
+	search := flag.String("search", "", "search in message")
 	last := flag.String("last", "24h", "time window e.g. 24h, 7d")
 	limit := flag.Int("limit", 20, "limit")
 	flag.Parse()
@@ -108,7 +108,7 @@ func main() {
 		fmt.Printf("Filters: %#v\n", filters)
 	}
 	if *search != "" {
-		fmt.Printf("FTS Search: %q\n", *search)
+		fmt.Printf("Search: %q\n", *search)
 	}
 
 	fmt.Println("\n--- Stats ---")
