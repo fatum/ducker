@@ -1,0 +1,14 @@
+{
+  "name": "ducker-benchmark",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "HTTP API benchmark for Ducker",
+  "scripts": {
+    "bench": "node run.js",
+    "bench:node": "node run.js --target node --generate",
+    "bench:go": "node run.js --target go --generate"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
