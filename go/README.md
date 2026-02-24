@@ -35,17 +35,6 @@ make run-cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 make run-cli -- --tenant tenant-1 --request_path "/api/users/*" --last 24h
 ```
 
-### Run Benchmarks
-
-```bash
-make run-benchmark
-# Options:
-#   --rows N       Total rows (default: 1,000,000,000)
-#   --segments N   Number of segments (default: 1000)
-#   --memory N     DuckDB memory limit (default: 2GB)
-#   --force        Force data regeneration
-```
-
 ## Testing
 
 ```bash
@@ -64,7 +53,6 @@ make build
 ```
 go/
 ├── cmd/
-│   ├── ducker-benchmark/   # Benchmark tool
 │   ├── ducker-cli/         # CLI tool
 │   └── ducker-server/      # HTTP server
 ├── internal/

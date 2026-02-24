@@ -48,17 +48,6 @@ npm run cli -- --tenant tenant-1 --search "connection timeout" --last 48h
 npm run cli -- --tenant tenant-1 --request_path "/api/users/*" --last 24h
 ```
 
-### Run Benchmarks
-
-```bash
-node scripts/benchmark.js
-# Options:
-#   --rows N       Total rows (default: 1,000,000,000)
-#   --segments N   Number of segments (default: 1000)
-#   --memory N     DuckDB memory limit (default: 2GB)
-#   --force        Force data regeneration
-```
-
 ## Testing
 
 ```bash

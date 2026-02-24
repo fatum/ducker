@@ -65,7 +65,7 @@ func executeDirectQuery(conn *sql.DB, table string, segments []string, filters m
 		clauses = append(clauses, fmt.Sprintf(`"timestamp" <= %d`, endTS))
 	}
 	where := "WHERE " + strings.Join(clauses, " AND ")
-	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_row_id, _segment) FROM %s %s ORDER BY "timestamp" DESC LIMIT %d OFFSET %d`, table, where, limit, offset)
+	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_segment) FROM %s %s ORDER BY "timestamp" DESC LIMIT %d OFFSET %d`, table, where, limit, offset)
 	return runRowMapQuery(conn, sqlText)
 }
 
@@ -81,7 +81,7 @@ func executeBasicSearchQuery(conn *sql.DB, table string, segments []string, filt
 	searchEscaped := escapeSQL(search)
 	clauses = append(clauses, fmt.Sprintf(`"message" ILIKE '%%%s%%'`, searchEscaped))
 	where := "WHERE " + strings.Join(clauses, " AND ")
-	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_row_id, _segment) FROM %s %s ORDER BY "timestamp" DESC LIMIT %d OFFSET %d`, table, where, limit, offset)
+	sqlText := fmt.Sprintf(`SELECT * EXCLUDE (_segment) FROM %s %s ORDER BY "timestamp" DESC LIMIT %d OFFSET %d`, table, where, limit, offset)
 	return runRowMapQuery(conn, sqlText)
 }
 

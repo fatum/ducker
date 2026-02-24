@@ -32,8 +32,6 @@ export class DuckDbCache {
         segment VARCHAR,
         cached_at BIGINT,
         last_accessed BIGINT,
-        fts_indexed_at BIGINT,
-        next_row_id BIGINT,
         row_count INTEGER,
         PRIMARY KEY (tenant, segment)
       )
@@ -76,17 +74,15 @@ export class DuckDbCache {
       this.misses++;
       const coldPath = path.join(this.coldStorageRoot, file.path);
 
-      const nextRowId = await this._getNextRowId(tenant);
-
       if (!this._knownTables.has(tableName)) {
         await this.connection.run(
-          `CREATE TABLE IF NOT EXISTS ${tableName} AS SELECT *, 0::BIGINT AS _row_id, ''::VARCHAR AS _segment FROM read_parquet('${escapeSql(coldPath)}') WHERE false`
+          `CREATE TABLE IF NOT EXISTS ${tableName} AS SELECT *, ''::VARCHAR AS _segment FROM read_parquet('${escapeSql(coldPath)}') WHERE false`
         );
         this._knownTables.add(tableName);
       }
 
       await this.connection.run(
-        `INSERT INTO ${tableName} SELECT *, ${nextRowId} + row_number() OVER () AS _row_id, '${escapeSql(file.segment)}' AS _segment FROM read_parquet('${escapeSql(coldPath)}')`
+        `INSERT INTO ${tableName} SELECT *, '${escapeSql(file.segment)}' AS _segment FROM read_parquet('${escapeSql(coldPath)}')`
       );
 
       const countResult = await this.connection.runAndReadAll(
@@ -96,7 +92,7 @@ export class DuckDbCache {
 
       const now = Date.now();
       await this.connection.run(
-        `INSERT INTO _cache_segments VALUES ('${escapeSql(tenant)}', '${escapeSql(file.segment)}', ${now}, ${now}, NULL, ${nextRowId + rowCount}, ${rowCount})`
+        `INSERT INTO _cache_segments VALUES ('${escapeSql(tenant)}', '${escapeSql(file.segment)}', ${now}, ${now}, ${rowCount})`
       );
 
       await this._cacheBloom(tenant, file.segment);
@@ -116,18 +112,6 @@ export class DuckDbCache {
       `SELECT 1 FROM _cache_segments WHERE tenant = '${escapeSql(tenant)}' AND segment = '${escapeSql(segment)}' LIMIT 1`
     );
     return result.getRowObjectsJson().length > 0;
-  }
-
-  async _getNextRowId(tenant) {
-    const tableName = tenantTableName(tenant);
-    try {
-      const result = await this.connection.runAndReadAll(
-        `SELECT COALESCE(MAX(_row_id), 0) AS max_id FROM ${tableName}`
-      );
-      return Number(result.getRowObjectsJson()[0].max_id);
-    } catch {
-      return 0;
-    }
   }
 
   async _cacheBloom(tenant, segment) {

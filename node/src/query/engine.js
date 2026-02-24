@@ -72,7 +72,7 @@ async function executeDirectQuery(conn, tableName, segments, filters, { limit = 
 
   const where = `WHERE ${clauses.join(' AND ')}`;
 
-  const sql = `SELECT * EXCLUDE (_row_id, _segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+  const sql = `SELECT * EXCLUDE (_segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   const reader = await conn.runAndReadAll(sql);
   return reader.getRowObjectsJson();
@@ -90,7 +90,7 @@ async function executeBasicSearchQuery(conn, tableName, segments, filters, searc
   clauses.push(`"message" ILIKE '%${searchEscaped}%'`);
   const where = `WHERE ${clauses.join(' AND ')}`;
 
-  const sql = `SELECT * EXCLUDE (_row_id, _segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+  const sql = `SELECT * EXCLUDE (_segment) FROM ${tableName} ${where} ORDER BY "timestamp" DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   const reader = await conn.runAndReadAll(sql);
   return reader.getRowObjectsJson();

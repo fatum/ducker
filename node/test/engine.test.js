@@ -72,12 +72,12 @@ async function createFixtures() {
 
   // Create tenant table from file1
   await conn.run(
-    `CREATE TABLE ${TABLE_NAME} AS SELECT *, row_number() OVER () AS _row_id, '${SEG1}' AS _segment FROM read_parquet('${file1}')`
+    `CREATE TABLE ${TABLE_NAME} AS SELECT *, '${SEG1}' AS _segment FROM read_parquet('${file1}')`
   );
 
   // Append file2
   await conn.run(
-    `INSERT INTO ${TABLE_NAME} SELECT *, (SELECT max(_row_id) FROM ${TABLE_NAME}) + row_number() OVER () AS _row_id, '${SEG2}' AS _segment FROM read_parquet('${file2}')`
+    `INSERT INTO ${TABLE_NAME} SELECT *, '${SEG2}' AS _segment FROM read_parquet('${file2}')`
   );
 }
 
