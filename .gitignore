@@ -1,0 +1,24 @@
+# Claude
+.claude/
+
+# Shared data
+cold-storage/
+benchmark-data/
+*.duckdb
+*.duckdb.wal
+
+# Node.js
+node/node_modules/
+node/cache/
+
+# Go
+go/.gocache/
+go/.gomodcache/
+go/bin/
+go/cache/
+
+# Build artifacts
+dist/
+*.test
+*.out
+coverage.out

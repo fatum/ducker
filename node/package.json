@@ -1,0 +1,19 @@
+{
+  "name": "ducker",
+  "version": "0.1.0",
+  "description": "DuckDB-powered stateless log search engine PoC",
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate.js",
+    "start": "node src/server.js",
+    "test": "node --test test/**/*.test.js",
+    "cli": "node src/cli.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "^1.4.4-r.1",
+    "fastify": "^5.7.4"
+  }
+}
